@@ -1,0 +1,363 @@
+﻿声明指针时，没有分配内存，再赋值就导致空指针异常。
+var a *int;  //声明一个int类型的指针变量，指向内存地址
+b := 1;
+a = &b 	//指向b的内存地址
+*a = 2      //修改b的值，*a代表内存的值
+
+select
+多个case满足条件时，会随机选择一个case执行
+
+Go Modules
+解决Go 语言长久以来的依赖管理问题。
+“淘汰”现有的 GOPATH 的使用模式。
+统一社区中的其它的依赖管理工具（提供迁移功能）
+
+
+面试：
+一、make与new的区别
+必要知识：引用类型的变量，我们不光要声明它，还要为它分配内容空间
+	 int类型的零值是0,string类型的零值是""，引用类型的零值是nil
+1) 相同点：堆空间分配内存
+2) 不同点：1、make 只用于切片、map、channel的初始化（非零值），返回三个引用类型本身
+	  2、new根据传入的类型(作为参数)分配一片内存空间并返回指向这片内存空间的指针（默认初始化为零值）
+	       普通类型直接使用 := 来声明初始化变量
+
+二、defer（使用栈，先进先出）
+1) defer与return谁先谁后:
+	1.return之后的语句先执行，defer后的语句后执行
+2) A. defer遇见panic，但是并不捕获异常的情况
+	例子：
+		    defer func() { fmt.Println("defer: panic 之前1") }()
+  		    defer func() { fmt.Println("defer: panic 之前2") }()
+    		    panic("异常内容")  //触发defer出栈
+		    defer func() { fmt.Println("defer: panic 之后，永远执行不到") }()
+	执行结果为：
+		   defer: panic 之前2
+		   defer: panic 之前1
+		   panic: 异常内容
+		   //... 异常堆栈信息
+  B. defer遇见panic，并捕获异常
+	例子：
+		 defer func() {
+       			fmt.Println("defer: panic 之前1, 捕获异常")
+      			if err := recover(); err != nil {		//遇到recover停止panic，err 就是panic传入的参数
+      			      fmt.Println(err)
+        			}
+    		}()
+   		defer func() { fmt.Println("defer: panic 之前2, 不捕获") }()
+   		panic("异常内容")  //触发defer出栈，只有在捕获异常时打印异常内容
+	结果：
+		defer: panic 之前2, 不捕获
+		defer: panic 之前1, 捕获异常
+		异常内容
+3) defer 最大的功能是 panic 后依然有效，所以defer可以保证你的一些资源一定会被关闭，从而避免一些异常出现的问题。
+4) 函数的返回值初始化
+         func DeferFunc1(i int) (t int) {}  //返回值t int，这个t会在函数起始处被初始化为对应类型的零值并且作用域为整个函数
+
+三、channel
+1) 空读写阻塞，写关闭异常，读关闭空零
+给一个 nil channel 发送数据，造成永远阻塞
+从一个 nil channel 接收数据，造成永远阻塞
+给一个已经关闭的 channel 发送数据，引起 panic
+从一个已经关闭的 channel 接收数据，如果缓冲区中为空，则返回一个零值
+无缓冲的channel是同步的，而有缓冲的channel是非同步的
+
+2) 通过读channel来判断channel是否关闭
+    ch := make(chan int, 1000)
+    go func() {
+        for i := 0; i < 10; i++ {
+            ch <- i
+        }
+    }()
+    go func() {
+        for {
+            a, ok := <-ch
+            if !ok {	//判断channel是否关闭，ok为false-关闭
+                fmt.Println("close")
+                return
+            }
+            fmt.Println("a: ", a)
+        }
+    }()
+    close(ch)	//关闭channel
+    fmt.Println("ok")
+    time.Sleep(time.Second * 100)
+2) 通过context 判断channel是否关闭
+select {
+case <-ctx.Done():		//当ctx.Done()中有值时，则判断channel已经退出。
+    // ... exit
+    return
+case v, ok := <-c:
+    // do something....
+default:
+    // do default ....
+}
+Done方法返回一个只读的chan，类型为struct{}，我们在goroutine中，如果该方法返回的chan可以读取，则意味着parent context已经发起了取消请求，我们通过Done方法收到这个信号后，就应该做清理操作，然后退出goroutine，释放资源。
+
+四、interface 
+1、interface 是方法声明的集合
+2、任何类型的对象实现了在interface 接口中声明的全部方法，则表明该类型实现了该接口。
+3、interface 可以作为一种数据类型，实现了该接口的任何对象都可以给对应的接口类型变量赋值。
+注意：
+　　a. interface 可以被任意对象实现，一个类型/对象也可以实现多个 interface
+　　b. 方法不能重载，如 eat(), eat(s string) 不能同时存在
+（1）发生多态的几个要素：
+1、有interface接口，并且有接口定义的方法
+2、有子类去重写interface的接口
+3、有父类指针指向子类的具体对象
+
+type People interface {	//(People为interface类型，就是指针类型)  非空接口
+    Speak(string) string
+}
+
+type Stduent struct{}
+
+func (stu *Stduent) Speak(think string) (talk string) {
+    if think == "love" {
+        talk = "You are a good boy"
+    } else {
+        talk = "hi"
+    }
+    return
+}
+
+func main() {
+    var peo People = &Stduent{}	//父类指针指向子类的具体对象
+    think := "love"
+    fmt.Println(peo.Speak(think))	//父类指针调用子类的具体方法
+}
+
+（2）空接口
+type a interface{}	
+非空接口
+type People interface {	
+    Speak(string) string
+}
+
+（3）inteface{}与*interface{}
+ABCD中哪一行存在错误？
+type S struct {
+}
+
+func f(x interface{}) {
+}
+
+func g(x *interface{}) {
+}
+
+func main() {
+    s := S{}
+    p := &s
+    f(s) //A
+    g(s) //B
+    f(p) //C
+    g(p) //D
+}
+B、D两行错误
+Golang是强类型语言，interface是所有golang类型的父类 函数中func f(x interface{})的interface{}可以支持传入golang的任何类型，包括指针，但是函数func g(x *interface{})只能接受*interface{}
+
+开闭原则（重要）
+一个软件实体如类、模块和函数应该对扩展开放，对修改关闭。通过interface实现开闭原则
+简单的说就是在修改需求的时候，应该尽量通过扩展来实现变化，而不是通过修改已有代码来实现变化。
+
+依赖倒转原则：（重要）
+1、如果我们在设计一个系统的时候，将模块分为3个层次，抽象层、实现层、业务逻辑层。
+2、我们首先将抽象层的模块和接口定义出来，这里就需要了interface接口的设计
+3、依照抽象层，依次实现每个实现层的模块，在我们写实现层代码的时候，实际上我们只需要参考对应的抽象层实现就好了，实现每个模块，也和其他的实现的模块没有关系，这样也符合了上面介绍的开闭原则。这样实现起来每个模块只依赖对象的接口，而和其他模块没关系，依赖关系单一。系统容易扩展和维护。
+4、在指定业务逻辑也是一样，只需要参考抽象层的接口来业务就好了，抽象层暴露出来的接口就是我们业务层可以使用的方法，然后可以通过多态的线下，接口指针指向哪个实现模块，调用了就是具体的实现方法，这样我们业务逻辑层也是依赖抽象成编程。
+
+Map
+1)Map的Value赋值
+下面代码编译会出现什么结果？编译失败
+package main
+import "fmt"
+type Student struct {
+    Name string
+}
+var list map[string]Student
+func main() {
+    list = make(map[string]Student)
+    student := Student{"Aceld"}
+    list["student"] = student
+    list["student"].Name = "LDB"
+    fmt.Println(list["student"])
+}
+分析：map[string]Student 的value是一个Student结构值，所以当list["student"] = student,是一个值拷贝过程。而list["student"]则是一个值引用。那么值引用的特点是只读。所以对list["student"].Name = "LDB"的修改是不允许的。
+改进后的代码：
+package main
+import "fmt"
+type Student struct {
+    Name string
+}
+var list map[string]*Student
+func main() {
+    list = make(map[string]*Student)
+    student := Student{"Aceld"}
+    list["student"] = &student
+    list["student"].Name = "LDB"
+    fmt.Println(list["student"])
+}
+分析：将map的类型的value由Student值，改成Student指针。我们实际上每次修改的都是指针所指向的Student空间，指针本身是常指针，不能修改，只读属性，但是指向的Student是可以随便修改的，而且这里并不需要值拷贝。只是一个指针的赋值。
+
+slice
+1)切片的初始化与追加
+func main(){
+    s := make([]int, 10)
+    s = append(s, 1, 2, 3)
+    fmt.Println(s)
+}
+切片追加, make初始化均为0
+结果：
+[0 0 0 0 0 0 0 0 0 0 1 2 3]
+2) slice拼接问题
+s1 := []int{1, 2, 3}
+s2 := []int{4, 5}
+s1 = append(s1, s2...)	//两个slice在append的时候，记住需要进行将第二个slice进行...打散再拼接。
+
+数据定义
+(1).函数返回值问题
+在函数有多个返回值时，只要有一个返回值有指定命名，其他的也必须有命名。 如果返回值有有多个返回值必须加上括号； 如果只有一个返回值并且有命名也需要加上括号； 此处函数第一个返回值有sum名称，第二个未命名，所以错误。
+(2)结构体比较问题
+结构体比较规则注意1：只有相同类型的结构体才可以比较，结构体是否相同不但与属性类型个数有关，还与属性顺序相关.
+结构体比较规则注意2：结构体是相同的，但是结构体属性中有不可以比较的类型，如map,slice，则结构体不能用==比较。
+(3).string与nil类型
+nil 可以用作 interface、function、pointer、error、map、slice 和 channel 的“空值”。
+
+内存四区概念：
+1)栈区(Stack)：
+空间较小，要求数据读写性能高，数据存放时间较短暂。由编译器自动分配和释放，存放函数的参数值、函数的调用流程方法地址、局部变量等(局部变量如果产生逃逸现象，可能会挂在在堆区)
+2)堆区(heap):
+空间充裕，数据存放时间较久。一般由开发者分配及释放(但是Golang中会根据变量的逃逸现象来选择是否分配到栈上或堆上)，启动Golang的GC由GC清除机制自动回收。
+3)全局区-静态全局变量区:
+全局变量的开辟是在程序在main之前就已经放在内存中。而且对外完全可见。即作用域在全部代码中，任何同包代码均可随时使用，在变量会搞混淆，而且在局部函数中如果同名称变量使用:=赋值会出现编译错误。
+全局变量最终在进程退出时，由操作系统回收。
+
+逃逸分析
+1、外部函数使用了子函数的局部变量，该局部变量会被分配到堆上（逃逸变量）
+2、go语言编译器会自动决定把一个变量放在栈还是放在堆，编译器会做逃逸分析(escape analysis)，当发现变量的作用域没有跑出函数范围，分配在栈上，反之则必须分配在堆。
+3、Golang中一个函数内局部变量，不管是不是动态new出来的，它会被分配在堆还是栈，是由编译器做逃逸分析之后做出的决定
+
+CSP并发模型
+两个独立的并发实体通过channel进行通信的并发模型，以通信的方式来共享内存
+每个 goroutine 之间是通过 channel 通信来实现数据共享
+
+sync.WaitGroup （重要）
+例子：
+基于带缓存通道，我们可以很容易将打印线程扩展到 N 个，下面的示例是开启 10 个后台线程分别打印：
+未改进：
+func main() {
+    done := make(chan int, 10) // 带10个缓存
+    // 开N个后台打印线程
+    for i := 0; i < cap(done); i++ {
+        go func() {
+            fmt.Println("C语言中文网")
+            done <- 1
+        }()
+    }
+    // 等待N个后台线程完成
+    for i := 0; i < cap(done); i++ {
+        <-done
+    }
+}
+sync.WaitGroup 来等待一组事件完成
+改进后：（很像数据库的事务）
+const N = 1
+func main() {
+	var wg sync.WaitGroup
+	for i := 0; i < N; i++ {
+	wg.Add(1) //维护的counter计数器加一，counter为0时，其他处于等待状态的goroutine才能继续正常的执行
+		go func() {
+			fmt.Println("打印...")
+			wg.Done() //等待事件完成
+		}()
+	}
+	wg.Wait() //等待N个后台线程完成
+}
+分析：
+wg.Add(1) 用于增加等待事件的个数，必须确保在后台线程启动之前执行（如果放到后台线程之中执行则不能保证被正常执行到）。当后台线程完成打印工作之后，调用 wg.Done() 表示完成一个事件，main() 函数的 wg.Wait() 是等待全部的事件完成。
+
+
+Goroutine调度器的GMP模型的设计思想
+1）用户态线程和内核态线程，用户态线程在go中叫做协程（goroutine）
+1、协程和线程的映射关系有三种：
+N:1 -  N个协程绑定1个线程	1:1 - 1个协程绑定1个线程	N:M - M个协程绑定1个线程
+?2、协程跟线程的区别：
+线程由CPU调度是抢占式的，协程由用户态调度是协作式的，一个协程让出CPU后，才执行下一个协程。
+3、coroutine(协程)与goroutine的区别：在coroutine中要等待一个协程主动让出CPU才执行下一个协程，在Go中，一个goroutine最多占用CPU 10ms，防止其他goroutine被饿死
+
+2) Goroutine调度器
+G0是每次启动一个M都会第一个创建的gourtine，使用G0把可运行的goroutine分配到线程M上，每个M都会有一个自己的G0
+
+3）GMP模型
+1、G(goroutine)
+2、M(thread) ：线程想运行任务就得获取P，从P的本地队列获取G，P队列为空时，M也会尝试从全局队列拿一批G放到P的本地队列，或从其他P的本地队列偷一半放到自己P的本地队列。M运行G，G执行之后，M会从P获取下一个G，不断重复下去。
+3、P(Processor 处理器)：所有的P都在程序启动时创建，并保存在数组中，最多有GOMAXPROCS(可配置)个。
+	P的本地队列：存放的也是等待运行的G，存的数量有限，不超过256个。新建G时，G优先加入到P的本地队列，如	果	队列满了，则会把本地队列中一半的G移动到全局队列。
+4、全局队列（Global Queue）：存放等待运行的G。
+5、Goroutine调度器和OS调度器是通过M结合起来的，每个M都代表了1个内核线程，OS调度器负责把内核线程分配到CPU的核上执行。
+
+4）有关P和M的个数问题
+1、P的数量：
+由启动时环境变量$GOMAXPROCS或者是由runtime的方法GOMAXPROCS()决定。这意味着在程序执行的任意时刻都只有$GOMAXPROCS个goroutine在同时运行。
+2、M的数量:
+go语言本身的限制：go程序启动时，会设置M的最大数量，默认10000.但是内核很难支持这么多的线程数
+runtime/debug中的SetMaxThreads函数，设置M的最大数量
+一个M阻塞了，会创建新的M。
+M与P的数量没有绝对关系，一个M阻塞，P就会去创建或者切换另一个M，所以，即使P的默认数量是1，也有可能会创建很多个M出来。
+
+5）P和M何时会被创建
+1、P何时创建：在确定了P的最大数量n后，运行时系统会根据这个数量创建n个P。
+2、M何时创建：没有足够的M来关联P并运行其中的可运行的G。比如所有的M此时都阻塞住了，而P中还有很多就绪任务，就会去寻找空闲的M，而没有空闲的，就会去创建新的M。
+
+6）Goroutine调度器的设计策略
+复用线程：避免频繁的创建、销毁线程，而是对线程的复用。
+1）work stealing机制
+?当本线程无可运行的G时，尝试从其他线程绑定的P偷取G，而不是销毁线程。
+2）hand off机制
+当本线程因为G进行系统调用阻塞时，线程释放绑定的P，把P转移给其他空闲的线程执行。
+
+7）go func() 调度流程（说说goroutine的调度过程）(重要)
+简短的来讲就是：
+首先创建一个goroutine；第二步：将这个G放入到调度器P的本地队列，如果满了，就放到全局队列中；第三步：每一个P都会绑定一个M(内核态线程)，M从P中拿一个可执行状态的G来执行；最后：由操作系统调度器分配时间片给内核态线程，让CPU去执行
+
+?1、我们通过 go func()来创建一个goroutine；
+?2、有两个存储G的队列，一个是局部调度器P的本地队列、一个是全局G队列。新创建的G会先保存在P的本地队列中，如果P的本地队列已经满了就会保存在全局的队列中；
+?3、G只能运行在M中，一个M必须持有一个P，M与P是1：1的关系。M会从P的本地队列弹出一个可执行状态的G来执行，如果P的本地队列为空，就会想其他的MP组合偷取一个可执行的G来执行；
+?4、一个M调度G执行的过程是一个循环机制；
+?5、当M执行某一个G时候如果发生了syscall或则其余阻塞操作，M会阻塞，如果当前有一些G在执行，runtime会把这个线程M从P中摘除(detach)，然后再创建一个新的操作系统的线程(如果有空闲的线程可用就复用空闲线程)来服务于这个P；
+?6、当M系统调用结束时候，这个G会尝试获取一个空闲的P执行，并放入到这个P的本地队列。如果获取不到P，那么这个线程M变成休眠状态， 加入到空闲线程中，然后这个G会被放入全局队列中。
+
+8）调度器的生命周期
+1、M0与G0：
+M0是启动程序后的编号为0的主线程，这个M对应的实例会在全局变量runtime.m0中，不需要在heap上分配，M0负责执行初始化操作和启动第一个G， 在之后M0就和其他的M一样了。
+G0是每次启动一个M都会第一个创建的gourtine，G0仅用于负责调度的G，G0不指向任何可执行的函数, 每个M都会有一个自己的G0。在调度或系统调用时会使用G0的栈空间, 全局变量的G0是M0的G0。
+2、例子：
+func main() {
+    fmt.Println("Hello world")
+}
+针对上面的代码对调度器里面的结构做一个分析：
+1、runtime创建最初的线程m0和goroutine g0，并把2者关联。
+2、调度器初始化：初始化m0、栈、垃圾回收，以及创建和初始化由GOMAXPROCS个P构成的P列表。
+3、示例代码中的main函数是main.main，runtime中也有1个main函数——runtime.main，代码经过编译后，runtime.main会调用main.main，程序启动时会为runtime.main创建goroutine，称它为main goroutine吧，然后把main goroutine加入到P的本地队列。
+4、启动m0，m0已经绑定了P，会从P的本地队列获取G，获取到main goroutine。
+5、G拥有栈，M根据G中的栈信息和调度信息设置运行环境
+6、M运行G
+7、G退出，再次回到M获取可运行的G，这样重复下去，直到main.main退出，runtime.main执行Defer和Panic处理，或调用runtime.exit退出程序
+8、runtime.main的goroutine执行之前都是为调度器做准备工作，runtime.main的goroutine运行，才是调度器的真正开始，直到runtime.main结束而结束。
+
+9）可视化GMP编程
+方式1：go tool trace
+trace记录了运行时的信息，能提供可视化的Web页面。
+方式2：Debug trace 
+通过Debug方式运行
+
+context
+context用于停止goroutine，协调多个goroutine的取消，设置超时取消。基于channel和select来实现停止，另外还可以用context在不同的goroutine中传递数据。
+父上下文调用Cancel()触发取消事件，子上下文通过Done()获得一个struct{} 类型的 channel，channel中有值，goroutine马上退出
+1、context可以用来跟踪goroutine，比如有一个网络请求Request，每个Request都需要开启一个goroutine做一些事情，这些goroutine又可能会开启其他goroutine。这样的话，我们就可以通过Context，来跟踪这些goroutine，并且通过Context来控制他们的目的，这就是Go语言为我们提供的Context，中文可以称之为“上下文”。
+2、在Go服务器程序中，每个请求都会有一个goroutine去处理。然而，处理程序往往还需要创建额外的goroutine去访问后端资源，比如数据库、RPC服务等。由于这些goroutine都是在处理同一个请求，所以它们往往需要访问一些共享的资源，比如用户身份信息、认证token、请求截止时间等。而且如果请求超时或者被取消后，所有的goroutine都应该马上退出并且释放相关的资源。这种情况也需要用Context来为我们取消掉所有goroutine
+
+
+
+
+

@@ -1,0 +1,98 @@
+﻿mounted方法(页面dom对象加载到内存完成了才会调用)：vue应用挂载到div  得到根组件实例
+通过组件实例调用属性和方法 vm.$data.属性变量名=vm.属性变量名  vm.方法名()=this.方法名(this是当前组件实例)
+数据驱动视图   数据双向绑定
+组件实例 组件中可以有data、methods方法
+生命周期钩子：vue实例创建后执行vue实例中的created(生命周期钩子)方法
+计算属性：computed对象 定义方法 监听响应式数据，dom响应式更新多个地方 响应式数据定义在data中 数据会缓存
+	在计算属性中可以做一个侦听(watch)，只要输入数据变了，会自动更新。
+setInterval(() => this.counter, 1000)方法 vm
+active: isActive
+数据驱动样式  class 样式 做一个页面渲染
+event.target得到事件对象
+
+vue应用挂载到div  根组件实例
+
+<template>中间是定义需要使用到资源(图片、组件)
+import 引入组件
+
+(参数1,参数2)=>{
+	函数中使用的this代表函数外的对象
+}  
+
+mounted(){} --- 页面加载后执行---输入一个url---自动跳转到其他url
+
+数据驱动视图 数据双向绑定
+
+const http = require('模块名'); 引入模块（相当于引入依赖）模块是预先通过npm(yarm、cnpm)下载到node_modules目录中的。http就可以用来创建开启后端服务、浏览器发起请求访问服务
+
+node.js 单线程--通过回调函数做其他其他事
+
+es6.js：
+
+一、解构：
+let关键字---变量不能重复定义 
+let user ={
+	username: 'zsm'
+	password: '1234'	
+};
+let {password} = user   拿到密码	--一个解构的过程
+
+二、模块化(位于node.js环境下才能实现)：
+a.js b.js ： a.js 想要使用b.js 的对象
+需要先在b.js导出数据对象 export default user ---- a.js使用user对象通过import user from './b.js' 同级目录
+默认导出(default)---只能使用一次 
+
+每个组件都是一个文件，一个组件就是一个页面或者一个页面的一部分
+
+main.ts 程序执行的入口(首页)，创建根组件
+use(router)使用路由---点击链接，路由跳转到其他页面
+||
+APP.vue 导入其他组件，<router-link to="/user/12">xxx</router-link>路由链接
+<router-view></router-view> 路由匹配的组件将渲染在这里
+||
+router文件：导入使用的组件(页面)，负责定义url，创建路由(路由跳转到其他页面)，export出去给main.ts用
+<router-view></router-view> 路由匹配的组件将渲染在这里 ---组件套组件
+组件套组件 -- children:[{a:b}{ }] ---子组件
+嵌套路由---url=/user--点击链接--子路由--url=/user/zhangsam----url拼接---v-bind:to='xx'--属性绑定值
+name:'xx' ---给路由定义一个别名
+alias: 'xx'---给重定向定义一个别名
+props: true -- 父组件向子组件传值 --接收参数props: ['id']-- $route.params.id(不需要通过路由来获取父组件的值)-- 实现了组件与路由的解耦 --- 静态模式 --- 直接在父组件中定义值--props: true改为props:{id:1}--很有用
+路由是封装在数组中的
+||
+ip:端口/#/uil --- #用来记录历史的url --- 就是页面的箭头 --- 底层类似于栈，每调用一个url，就压栈，使用时就出栈
+#使用方式 --- 在创建路由时，加上history: createWebHashHistory() --- hash模式 --- 推荐使用html5模式 --- 访问的资源，服务器没有时，如果不想返回404，就在nginx添加一行代码
+||
+路由(导航)守卫 --- 拦截器---meta: {requiresAuth: true} --- 定义在.js或.ts中
+||
+动态路由 --- 动态添加路由，添加嵌套路由，从后端获取数据，主动生成路由，不一定一开始就定义路由
+||
+@--代表src目录
+||
+vuex实例---使数据共享，每个组件都能用---全局变量的使用方式{{ $实例名.属性名 }}---store实例(存数据)--state属性(共享变量)---||
+mutations修改state中的数据----vuex的逻辑一般是写在store目录下---在组件中通过commit方法修改state中的数据
+在mutation-types.js中统一将mutation中的方法重新定义为变量，在其他组件中使用时，commit方法的参数为变量，而不是字符串，使用更方便---
+mutations中的函数必须是同步函数---store中修改state中数据，state中的数据也会立马变
+||
+vuex通过vue的插件系统将store实例从根组件中注入到所有子组件，子组件能通过this.$store.变量名访问
+this.$store.变量名一般放在计算属性(里面放的是方法)中---在<template>中通过{{ 方法名 }}
+最简单的方式--组件使用state中的变量 --- 计算属性(computed): mystate方法(需要导入使用) (['变量名','变量名'])
+||
+todos就是list集合
+||
+getters定义在store中，其中的方法(变量)在其他组件都可以使用，在其他组件中直接通过{{ 方法名 }}使用(方法有return返回)
+mapGetters在组件中使用，在其他组件中直接通过{{ 方法名 }}使用
+||
+action--类似于mutations，在store中commit，对值做修改---进行异步操作，分发多重mutations --- 多个组件共享的复杂业务逻辑(权限、认证)适合写在action中，在组件调用store.dispatch分发action(组件使用action) --- 或者通过myaction在组件中使用action
+||
+mutations、action区别在于：mutations对state中数据做修改，哪个组件需要数据的这一状态变化，哪个组件就自己提交这种变化。
+action在store中即修改了数据又做了提交这种状态变化，哪些组件需要，就在action中分发给哪些组件
+action适合多个组件共享的业务逻辑，做一个集体的分发
+||
+store模块化：每个业务场景都有state、getters、mutations、action --- index.js负责创建store实例，引入模块 --- 根级别的action，访问每个模块的mutations --- 根级别的mutations修改每个模块的state --- module文件夹(模块)
+||
+组合API---将option选项(props)传入到setup，return返回值暴露给当前组件的其他属性(计算属性、methods)使用---setup在创建组件之前执行---setup中的变量是非响应式的（使用ref可以实现响应式）--- 共同的主题都写在setup中
+||
+解构出来 --- 分别导出，直接导入使用
+||
+hooks：将相同的业务逻辑写在一个文件夹，文件名一般是usexxx.ts
+
